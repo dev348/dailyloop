@@ -1,0 +1,27 @@
+// The Daily Loop - feedback mailer
+// Paste this whole file into a new Google Apps Script project (script.google.com).
+// It receives feedback from the app and emails it to you, using your own Gmail
+// sending quota (500 emails/day on a normal Google account) - free, no cap,
+// no third party. Setup steps are in config.js.
+
+function doPost(e) {
+  var data = {};
+  try {
+    data = JSON.parse(e.postData.contents);
+  } catch (err) {
+    data = {};
+  }
+
+  var message = data.message || "(empty message)";
+  var subject = data._subject || "The Daily Loop feedback";
+
+  MailApp.sendEmail({
+    to: "mswaran@collab.isdm.org.in",
+    subject: subject,
+    body: message + "\n\n— sent from The Daily Loop"
+  });
+
+  return ContentService
+    .createTextOutput(JSON.stringify({ ok: true }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
