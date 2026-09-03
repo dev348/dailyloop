@@ -1,26 +1,33 @@
-// The Daily Loop - feedback mailer
-// Paste this whole file into a new Google Apps Script project (script.google.com).
-// It receives feedback from the app and emails it to you, using your own Gmail
-// sending quota (500 emails/day on a normal Google account) - free, no cap,
-// no third party. Setup steps are in config.js.
+// The Daily Loop - backend script
+// Paste this whole file into your Google Apps Script project (script.google.com),
+// replacing whatever's there, then Deploy > Manage deployments > edit > New version
+// so the change goes live. It does two things, both tied to your own Google
+// account, both free:
+//
+// 1. Feedback mailer: emails you when someone taps "Send feedback" in the app.
+// 2. Activity log: when a signed-in student's entry syncs, it writes one row -
+//    their email, when they were last active, and how many entries they've
+//    saved - into a private Google Sheet only you can open. It never receives
+//    or stores anything they actually wrote. The first time this runs it
+//    creates the sheet automatically and you'll find it in your Drive as
+//    "The Daily Loop - Activity".
 //
 // Security: this script is deployed with "Who has access: Anyone", which means
 // its URL is a public endpoint - anyone who finds it (it's visible in config.js
 // in the repo) could POST to it directly, not just the app. The shared secret
 // below stops that: the app sends it with every request, and requests without
-// the right secret are dropped before anything is emailed. This is not true
+// the right secret are dropped before anything happens. This is not true
 // secrecy (someone could still read it out of the app's source), but it blocks
 // casual/automated abuse and bots that scan for open Apps Script endpoints.
-// A daily cap is also enforced as a second layer, in case the secret ever leaks.
 //
 // This value MUST exactly match config.js's feedbackSecret. If you ever want to
-// rotate it: change it here, change it in config.js, then Deploy > Manage
-// deployments > edit > New version (see step 4 below) so the live script picks
-// it up.
+// rotate it: change it here, change it in config.js, then redeploy (see the
+// note above).
 var SHARED_SECRET = "0ca50bb4e70907f91bb60d2a49ba535ac64ea13d";
 
-// Keeps a single day's feedback well under Gmail's 500/day sending limit,
-// even if the secret above ever leaks.
+// Keeps a single day's feedback emails well under Gmail's 500/day sending
+// limit, even if the secret above ever leaks. Activity pings don't send email,
+// so they aren't counted against this.
 var DAILY_CAP = 40;
 
 function doPost(e) {
@@ -32,15 +39,19 @@ function doPost(e) {
   }
 
   if (data.secret !== SHARED_SECRET) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ ok: false, error: "unauthorized" }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return jsonOut({ ok: false, error: "unauthorized" });
   }
 
+  if (data.type === "checkin") {
+    return handleCheckin(data);
+  }
+
+  return handleFeedback(data);
+}
+
+function handleFeedback(data) {
   if (!withinDailyCap()) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ ok: false, error: "rate limited" }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return jsonOut({ ok: false, error: "rate limited" });
   }
 
   var message = String(data.message || "(empty message)").slice(0, 5000);
@@ -52,9 +63,47 @@ function doPost(e) {
     body: message + "\n\n— sent from The Daily Loop"
   });
 
-  return ContentService
-    .createTextOutput(JSON.stringify({ ok: true }))
-    .setMimeType(ContentService.MimeType.JSON);
+  return jsonOut({ ok: true });
+}
+
+function handleCheckin(data) {
+  var email = String(data.email || "").trim().slice(0, 200);
+  if (!email) return jsonOut({ ok: false, error: "no email" });
+
+  var sheet = getActivitySheet();
+  var rows = sheet.getDataRange().getValues();
+  var now = new Date();
+
+  for (var i = 1; i < rows.length; i++) {
+    if (rows[i][0] === email) {
+      sheet.getRange(i + 1, 2).setValue(now);              // last active
+      sheet.getRange(i + 1, 3).setValue((Number(rows[i][2]) || 0) + 1); // entries seen
+      return jsonOut({ ok: true });
+    }
+  }
+
+  sheet.appendRow([email, now, 1, now]); // email, last active, entries seen, first seen
+  return jsonOut({ ok: true });
+}
+
+function getActivitySheet() {
+  var props = PropertiesService.getScriptProperties();
+  var id = props.getProperty("ACTIVITY_SHEET_ID");
+  var ss;
+  if (id) {
+    try {
+      ss = SpreadsheetApp.openById(id);
+      return ss.getActiveSheet();
+    } catch (err) {
+      // sheet was deleted or moved - fall through and make a new one
+    }
+  }
+  ss = SpreadsheetApp.create("The Daily Loop - Activity");
+  props.setProperty("ACTIVITY_SHEET_ID", ss.getId());
+  var sheet = ss.getActiveSheet();
+  sheet.appendRow(["Email", "Last active", "Entries seen", "First seen"]);
+  sheet.getRange(1, 1, 1, 4).setFontWeight("bold");
+  return sheet;
 }
 
 function withinDailyCap() {
@@ -65,4 +114,10 @@ function withinDailyCap() {
   if (count >= DAILY_CAP) return false;
   props.setProperty(key, String(count + 1));
   return true;
+}
+
+function jsonOut(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
 }

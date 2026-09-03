@@ -370,7 +370,7 @@
     if(!configured()){$("authText").textContent="Offline mode (sync not set up)";$("signin").classList.add("hidden");return;}
     var tries=0;(function wait(){
       if(window.google&&google.accounts&&google.accounts.oauth2){
-        tokenClient=google.accounts.oauth2.initTokenClient({client_id:CFG.clientId,scope:"https://www.googleapis.com/auth/drive.appdata",callback:function(r){if(r&&r.access_token){accessToken=r.access_token;tokenExp=Date.now()+((r.expires_in||3600)*1000)-60000;try{localStorage.setItem(REMEMBER_KEY,"1");}catch(e){}onSignedIn();}else{toast("Sign-in failed");}}});
+        tokenClient=google.accounts.oauth2.initTokenClient({client_id:CFG.clientId,scope:"https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email",callback:function(r){if(r&&r.access_token){accessToken=r.access_token;tokenExp=Date.now()+((r.expires_in||3600)*1000)-60000;try{localStorage.setItem(REMEMBER_KEY,"1");}catch(e){}onSignedIn();}else{toast("Sign-in failed");}}});
         if(localStorage.getItem(REMEMBER_KEY)==="1"){attemptSilentReauth();}
       } else if(tries++<40){setTimeout(wait,150);} else {$("authText").textContent="Google library blocked";}
     })();
@@ -401,13 +401,25 @@
   function signIn(){if(!tokenClient){toast("Sign-in not ready yet");return;}tokenClient.requestAccessToken({prompt:"consent"});}
   function ensureToken(cb){if(accessToken&&Date.now()<tokenExp){cb();return;}if(!tokenClient){toast("Sign-in not ready");return;}var prev=tokenClient.callback;tokenClient.callback=function(r){tokenClient.callback=prev;if(r&&r.access_token){accessToken=r.access_token;tokenExp=Date.now()+((r.expires_in||3600)*1000)-60000;cb();}else toast("Sign-in needed");};tokenClient.requestAccessToken({prompt:""});}
   function H(){return {"Authorization":"Bearer "+accessToken};}
+  var signedInEmail="";
+  function ensureEmail(){
+    if(signedInEmail)return Promise.resolve(signedInEmail);
+    return fetch("https://www.googleapis.com/oauth2/v3/userinfo",{headers:H()}).then(function(r){return r.json();}).then(function(j){signedInEmail=j.email||"";return signedInEmail;}).catch(function(){return "";});
+  }
+  function pingActivity(){
+    if(!accessToken||!CFG.feedbackFormEndpoint||!CFG.feedbackSecret)return;
+    ensureEmail().then(function(email){
+      if(!email)return;
+      fetch(CFG.feedbackFormEndpoint,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({type:"checkin",email:email,secret:CFG.feedbackSecret})}).catch(function(){});
+    });
+  }
   function driveFind(){return fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q="+encodeURIComponent("name='dailyloop.json'")+"&fields=files(id,name)",{headers:H()}).then(function(r){return r.json();}).then(function(j){return (j.files&&j.files[0])?j.files[0].id:null;});}
   function driveRead(id){return fetch("https://www.googleapis.com/drive/v3/files/"+id+"?alt=media",{headers:H()}).then(function(r){return r.json();}).catch(function(){return null;});}
   function driveCreate(o){var meta={name:"dailyloop.json",parents:["appDataFolder"]};var b="dl"+Date.now();var body="--"+b+"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"+JSON.stringify(meta)+"\r\n--"+b+"\r\nContent-Type: application/json\r\n\r\n"+JSON.stringify(o)+"\r\n--"+b+"--";return fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",{method:"POST",headers:{"Authorization":"Bearer "+accessToken,"Content-Type":"multipart/related; boundary="+b},body:body}).then(function(r){return r.json();}).then(function(j){return j.id;});}
   function driveUpdate(id,o){return fetch("https://www.googleapis.com/upload/drive/v3/files/"+id+"?uploadType=media",{method:"PATCH",headers:{"Authorization":"Bearer "+accessToken,"Content-Type":"application/json"},body:JSON.stringify(o)}).then(function(r){return r.json();});}
   function setSynced(on,label){$("authPip").className=on?"pip-ok":"pip-off";$("authText").textContent=label;}
-  function onSignedIn(){setSynced(true,"Syncing...");$("authBtns").innerHTML='<button class="gbtn ghost" id="signout">Sign out</button>';$("signout").addEventListener("click",signOut);maybeShowNudge();ensureToken(function(){driveFind().then(function(id){driveFileId=id;var rp=id?driveRead(id):Promise.resolve(null);return rp.then(function(remote){if(remote&&remote.days){store=mergeStores(store,remote);persist();renderProgress();renderTodayList();refreshWheelDaily();}var push=driveFileId?driveUpdate(driveFileId,store):driveCreate(store).then(function(n){driveFileId=n;});return push;});}).then(function(){setSynced(true,"Synced to your Drive");toast("Synced to your Drive");}).catch(function(){setSynced(false,"Sync error, saved locally");});});}
-  function signOut(){if(accessToken&&window.google&&google.accounts&&google.accounts.oauth2){try{google.accounts.oauth2.revoke(accessToken,function(){});}catch(e){}}accessToken=null;tokenExp=0;driveFileId=null;try{localStorage.removeItem(REMEMBER_KEY);}catch(e){}setSynced(false,"Private on this device");$("authBtns").innerHTML='<button class="gbtn" id="signin">Sign in with Google</button>';$("signin").addEventListener("click",signIn);maybeShowNudge();toast("Signed out");}
+  function onSignedIn(){setSynced(true,"Syncing...");$("authBtns").innerHTML='<button class="gbtn ghost" id="signout">Sign out</button>';$("signout").addEventListener("click",signOut);maybeShowNudge();pingActivity();ensureToken(function(){driveFind().then(function(id){driveFileId=id;var rp=id?driveRead(id):Promise.resolve(null);return rp.then(function(remote){if(remote&&remote.days){store=mergeStores(store,remote);persist();renderProgress();renderTodayList();refreshWheelDaily();}var push=driveFileId?driveUpdate(driveFileId,store):driveCreate(store).then(function(n){driveFileId=n;});return push;});}).then(function(){setSynced(true,"Synced to your Drive");toast("Synced to your Drive");}).catch(function(){setSynced(false,"Sync error, saved locally");});});}
+  function signOut(){if(accessToken&&window.google&&google.accounts&&google.accounts.oauth2){try{google.accounts.oauth2.revoke(accessToken,function(){});}catch(e){}}accessToken=null;tokenExp=0;driveFileId=null;signedInEmail="";try{localStorage.removeItem(REMEMBER_KEY);}catch(e){}setSynced(false,"Private on this device");$("authBtns").innerHTML='<button class="gbtn" id="signin">Sign in with Google</button>';$("signin").addEventListener("click",signIn);maybeShowNudge();toast("Signed out");}
   function pushIfSignedIn(){if(!configured()||!accessToken)return;ensureToken(function(){var p=driveFileId?driveUpdate(driveFileId,store):driveCreate(store).then(function(id){driveFileId=id;});p.then(function(){setSynced(true,"Synced to your Drive");}).catch(function(){setSynced(false,"Sync error, saved locally");});});}
 
   /* ---------- streaks + wheel ---------- */
@@ -474,6 +486,7 @@
     maybeShowNudge();
     toast(ok?"Added. The loop turns.":"Saved (storage off)");
     pushIfSignedIn();
+    pingActivity();
   }
   $("saveBtn").addEventListener("click",addEntry);
   ["f-exp","f-ref","f-mod","f-try"].forEach(function(id){
