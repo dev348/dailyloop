@@ -3,6 +3,25 @@
 // It receives feedback from the app and emails it to you, using your own Gmail
 // sending quota (500 emails/day on a normal Google account) - free, no cap,
 // no third party. Setup steps are in config.js.
+//
+// Security: this script is deployed with "Who has access: Anyone", which means
+// its URL is a public endpoint - anyone who finds it (it's visible in config.js
+// in the repo) could POST to it directly, not just the app. The shared secret
+// below stops that: the app sends it with every request, and requests without
+// the right secret are dropped before anything is emailed. This is not true
+// secrecy (someone could still read it out of the app's source), but it blocks
+// casual/automated abuse and bots that scan for open Apps Script endpoints.
+// A daily cap is also enforced as a second layer, in case the secret ever leaks.
+//
+// This value MUST exactly match config.js's feedbackSecret. If you ever want to
+// rotate it: change it here, change it in config.js, then Deploy > Manage
+// deployments > edit > New version (see step 4 below) so the live script picks
+// it up.
+var SHARED_SECRET = "0ca50bb4e70907f91bb60d2a49ba535ac64ea13d";
+
+// Keeps a single day's feedback well under Gmail's 500/day sending limit,
+// even if the secret above ever leaks.
+var DAILY_CAP = 40;
 
 function doPost(e) {
   var data = {};
@@ -12,8 +31,20 @@ function doPost(e) {
     data = {};
   }
 
-  var message = data.message || "(empty message)";
-  var subject = data._subject || "The Daily Loop feedback";
+  if (data.secret !== SHARED_SECRET) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: false, error: "unauthorized" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (!withinDailyCap()) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: false, error: "rate limited" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  var message = String(data.message || "(empty message)").slice(0, 5000);
+  var subject = String(data._subject || "The Daily Loop feedback").slice(0, 200);
 
   MailApp.sendEmail({
     to: "mswaran@collab.isdm.org.in",
@@ -24,4 +55,14 @@ function doPost(e) {
   return ContentService
     .createTextOutput(JSON.stringify({ ok: true }))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function withinDailyCap() {
+  var props = PropertiesService.getScriptProperties();
+  var today = Utilities.formatDate(new Date(), "Etc/UTC", "yyyy-MM-dd");
+  var key = "count_" + today;
+  var count = Number(props.getProperty(key) || "0");
+  if (count >= DAILY_CAP) return false;
+  props.setProperty(key, String(count + 1));
+  return true;
 }

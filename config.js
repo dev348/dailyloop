@@ -22,7 +22,16 @@
 // opens the visitor's own email app instead of sending in-app.
 // If you ever edit the script, you must create a new deployment (or "Manage
 // deployments" > edit > New version) for the change to go live.
+//
+// feedbackSecret: the script's URL is public (anyone who reads this file can
+// find it), so this string is sent with every feedback request and checked by
+// the script - requests without it are dropped. It must exactly match
+// SHARED_SECRET in feedback-mailer.gs.txt. It's not true secrecy (it's sitting
+// right here in a public file), just a cheap filter against random bots that
+// scan for open Apps Script endpoints. If you rotate it, change both places
+// and redeploy the script.
 window.DAILY_LOOP_CONFIG = {
   clientId: "994119404319-jenqmenq7u7fjk4j6nhs6p4d6kiqvnla.apps.googleusercontent.com",
-  feedbackFormEndpoint: "https://script.google.com/macros/s/AKfycbzN6sUirhGi5Qk7-sB7dOTuzyC2VJ0a96-_PHgel3SH55BqWu-7baJgFah7LIANqFoC/exec"
+  feedbackFormEndpoint: "https://script.google.com/macros/s/AKfycbzN6sUirhGi5Qk7-sB7dOTuzyC2VJ0a96-_PHgel3SH55BqWu-7baJgFah7LIANqFoC/exec",
+  feedbackSecret: "0ca50bb4e70907f91bb60d2a49ba535ac64ea13d"
 };

@@ -572,7 +572,7 @@
       fetch(endpoint,{
         method:"POST",
         headers:{"Content-Type":"text/plain;charset=utf-8"},
-        body:JSON.stringify({message:t,_subject:"The Daily Loop feedback"})
+        body:JSON.stringify({message:t,_subject:"The Daily Loop feedback",secret:CFG.feedbackSecret||""})
       }).then(function(r){
         btn.disabled=false;btn.textContent="Send feedback";
         if(r.ok){$("fb-text").value="";toast("Feedback sent. Thank you.");}
