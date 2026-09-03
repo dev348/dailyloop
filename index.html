@@ -106,6 +106,13 @@
   .wfield .prompt{color:var(--muted);font-size:12.5px;margin:0 0 6px;}
   .wfield textarea{min-height:60px;font-size:15px;}
 
+  .tryCheck{padding:14px 16px;margin-bottom:18px;background:var(--glass-bg);}
+  .tryCheck .tc-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0 0 4px;}
+  .tryCheck .tc-text{font-size:14.5px;color:var(--ink);margin:0 0 10px;line-height:1.4;}
+  .tryCheck .tc-ask{font-size:12.5px;color:var(--muted);margin:0 0 8px;}
+  .tc-chips{display:flex;gap:6px;flex-wrap:wrap;}
+  .tc-chips .mword[aria-pressed="true"]{background:var(--ok);color:#fff;}
+
   .today-card{margin-top:14px;padding:16px 18px;}
   .today-card .sub{margin:0 0 10px;}
 
@@ -134,6 +141,7 @@
   .entry .body{margin-top:8px;font-size:13.5px;}
   .entry .body p{margin:6px 0;}
   .entry .body b{font-family:var(--font-ui);font-weight:700;font-size:12px;}
+  .entry .body .checkin{color:var(--muted);font-style:italic;}
   .empty{color:var(--muted);font-size:13.5px;text-align:center;padding:8px 0;}
 
   /* weekly (kept as a single reflective card) */
@@ -216,8 +224,20 @@
       </div>
 
       <div class="wfield fe"><div class="flabel">Experience</div><p class="prompt">One thing you did or encountered.</p><textarea id="f-exp" placeholder="Today I..."></textarea></div>
-      <div class="wfield fr"><div class="flabel">Reflect</div><p class="prompt">What did you notice? How did it feel?</p><textarea id="f-ref" placeholder="What I noticed was..."></textarea></div>
+      <div class="wfield fr"><div class="flabel">Reflect</div><p class="prompt">What thoughts came up? What feeling are you carrying? How does it sit in your body?</p><textarea id="f-ref" placeholder="What I noticed was..."></textarea></div>
       <div class="wfield fm"><div class="flabel">Model</div><p class="prompt">Your own takeaway. The rule or idea forming.</p><textarea id="f-mod" placeholder="So maybe..."></textarea></div>
+
+      <div class="card tryCheck hidden" id="tryCheck">
+        <p class="tc-label">Yesterday you wanted to try</p>
+        <p class="tc-text" id="tryCheckText"></p>
+        <p class="tc-ask">Did it work?</p>
+        <div class="tc-chips" id="tryCheckChips">
+          <button type="button" class="mword" data-v="worked">Worked</button>
+          <button type="button" class="mword" data-v="partly">Partly</button>
+          <button type="button" class="mword" data-v="no">Didn't</button>
+        </div>
+      </div>
+
       <div class="wfield ft"><div class="flabel">Try</div><p class="prompt">One small thing you will test next.</p><textarea id="f-try" placeholder="Next I will..."></textarea></div>
 
       <div class="nav"><button class="act primary" id="saveBtn">Save entry</button></div>
@@ -408,6 +428,7 @@
   var pickedWord="";
   var moodTouched=true;
   var lastZoneTok="";
+  var pickedTryCheck=null;
   function moodIdx(){return Math.max(0,Math.min(6,Math.round(parseFloat($("moodRange").value))));}
   function renderMoodLabel(){
     var el=$("moodRange");
@@ -434,8 +455,8 @@
   $("moodRange").addEventListener("change",function(){this.value=moodIdx();renderMoodLabel();});
 
   /* ---------- daily entry form ---------- */
-  function currentVals(){return {emoji:pickedEmoji,moodWord:pickedWord,exp:$("f-exp").value.trim(),ref:$("f-ref").value.trim(),mod:$("f-mod").value.trim(),"try":$("f-try").value.trim()};}
-  function clearDraft(){pickedEmoji=MOODS[3];pickedWord="";lastZoneTok="";moodTouched=true;$("moodRange").value="3";renderMoodLabel();["f-exp","f-ref","f-mod","f-try"].forEach(function(id){$(id).value="";});}
+  function currentVals(){var v={emoji:pickedEmoji,moodWord:pickedWord,exp:$("f-exp").value.trim(),ref:$("f-ref").value.trim(),mod:$("f-mod").value.trim(),"try":$("f-try").value.trim()};if(pickedTryCheck)v.checkIn={ref:pickedTryCheck.ref,result:pickedTryCheck.result};return v;}
+  function clearDraft(){pickedEmoji=MOODS[3];pickedWord="";lastZoneTok="";moodTouched=true;pickedTryCheck=null;$("moodRange").value="3";renderMoodLabel();["f-exp","f-ref","f-mod","f-try"].forEach(function(id){$(id).value="";});}
 
   function addEntry(){
     var v=currentVals();
@@ -463,7 +484,47 @@
   function timeLabel(ts){try{return new Date(ts).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});}catch(e){return "";}}
   function snippet(e){var f=STG.filter(function(s){return e[s[0]]&&e[s[0]].trim();})[0];if(!f)return "";var t=e[f[0]].trim();return t.length>46?t.slice(0,46)+"…":t;}
 
+  function checkInLabel(r){return r==="worked"?"Worked":r==="partly"?"Partly worked":r==="no"?"Didn't work":"";}
+  function checkInHtml(e){return e.checkIn?'<p class="checkin"><b>Checked in · </b>&ldquo;'+esc(e.checkIn.ref)+'&rdquo; · '+checkInLabel(e.checkIn.result)+'</p>':'';}
+  function findYesterdaysTry(){
+    var todayKey=today();
+    var keys=Object.keys(store.days).filter(function(k){return k<todayKey;}).sort().reverse();
+    for(var i=0;i<keys.length;i++){
+      var arr=dayEntries(keys[i]);
+      for(var j=arr.length-1;j>=0;j--){
+        if(arr[j]["try"]&&arr[j]["try"].trim())return arr[j]["try"].trim();
+      }
+    }
+    return null;
+  }
+  function tryAlreadyChecked(text){
+    return dayEntries(today()).some(function(e){return e.checkIn&&e.checkIn.ref===text;});
+  }
+  function renderTryCheck(){
+    var text=findYesterdaysTry();
+    var card=$("tryCheck");
+    if(!text||tryAlreadyChecked(text)){card.classList.add("hidden");if(!text)pickedTryCheck=null;return;}
+    card.classList.remove("hidden");
+    $("tryCheckText").textContent=text;
+    var chips=$("tryCheckChips").children;
+    for(var i=0;i<chips.length;i++){
+      var b=chips[i];
+      var pressed=!!(pickedTryCheck&&pickedTryCheck.ref===text&&pickedTryCheck.result===b.getAttribute("data-v"));
+      b.setAttribute("aria-pressed",pressed?"true":"false");
+    }
+  }
+  $("tryCheckChips").addEventListener("click",function(ev){
+    var btn=ev.target.closest(".mword");
+    if(!btn)return;
+    var text=$("tryCheckText").textContent;
+    var v=btn.getAttribute("data-v");
+    if(pickedTryCheck&&pickedTryCheck.ref===text&&pickedTryCheck.result===v){pickedTryCheck=null;}
+    else{pickedTryCheck={ref:text,result:v};}
+    renderTryCheck();
+  });
+
   function renderTodayList(){
+    renderTryCheck();
     var arr=dayEntries(today());
     var card=$("todayCard");
     $("todayCount").textContent=arr.length;
@@ -479,6 +540,7 @@
         (e.ref?'<p><b>Reflect · </b>'+esc(e.ref)+'</p>':'')+
         (e.mod?'<p><b>Model · </b>'+esc(e.mod)+'</p>':'')+
         (e["try"]?'<p><b>Try · </b>'+esc(e["try"])+'</p>':'')+
+        checkInHtml(e)+
       '</div>';
       wrap.appendChild(det);
     });
@@ -515,7 +577,7 @@
     $("doneCount").textContent="Last 4 weeks · "+done+(done===1?" day":" days");
     var wrap=$("list");var flat=allEntriesFlat().slice(0,8);
     if(!flat.length){wrap.innerHTML='<p class="empty">Your saved loops will show here.</p>';}
-    else{wrap.innerHTML="";flat.forEach(function(row){var e=row.e,k=row.date;var det=document.createElement("details");det.className="entry";var lbl;try{lbl=parseISO(k).toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"});}catch(_){lbl=k;}det.innerHTML='<summary><span class="d">'+moodBadge(e.emoji,e.moodWord)+'<span>'+lbl+'</span><span class="snip">'+timeLabel(e.ts)+'</span></span></summary><div class="body">'+(e.exp?'<p><b>Experience · </b>'+esc(e.exp)+'</p>':'')+(e.ref?'<p><b>Reflect · </b>'+esc(e.ref)+'</p>':'')+(e.mod?'<p><b>Model · </b>'+esc(e.mod)+'</p>':'')+(e["try"]?'<p><b>Try · </b>'+esc(e["try"])+'</p>':'')+'</div>';wrap.appendChild(det);});}
+    else{wrap.innerHTML="";flat.forEach(function(row){var e=row.e,k=row.date;var det=document.createElement("details");det.className="entry";var lbl;try{lbl=parseISO(k).toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"});}catch(_){lbl=k;}det.innerHTML='<summary><span class="d">'+moodBadge(e.emoji,e.moodWord)+'<span>'+lbl+'</span><span class="snip">'+timeLabel(e.ts)+'</span></span></summary><div class="body">'+(e.exp?'<p><b>Experience · </b>'+esc(e.exp)+'</p>':'')+(e.ref?'<p><b>Reflect · </b>'+esc(e.ref)+'</p>':'')+(e.mod?'<p><b>Model · </b>'+esc(e.mod)+'</p>':'')+(e["try"]?'<p><b>Try · </b>'+esc(e["try"])+'</p>':'')+checkInHtml(e)+'</div>';wrap.appendChild(det);});}
   }
 
   /* ---------- weekly ---------- */
