@@ -8,9 +8,9 @@
 <script src="config.js"></script>
 <style>
   :root{
-    --ground:#F5F5F2; --surface:#FFFFFF; --surface-2:#F2F2F0; --ink:#1C1C1E; --muted:#8A8A8E; --hairline:#EBEBE8;
+    --ground:#F5F5F2; --surface:#FFFFFF; --surface-2:#F2F2F0; --ink:#1C1C1E; --muted:#6E6E73; --hairline:#EBEBE8;
     --exp:#DB8A63; --ref:#6C9BC4; --mod:#9483BE; --try:#6FAA7C;
-    --btn:#0A84FF; --btn-ink:#FFFFFF; --focus:#0A84FF; --ok:#34C759; --danger:#FF3B30;
+    --btn:#0060C6; --btn-ink:#FFFFFF; --focus:#0A84FF; --ok:#34C759; --danger:#FF3B30;
     --glass-bg:rgba(120,140,175,.08); --glass-bg-strong:rgba(120,140,175,.16); --glass-border:rgba(0,0,0,.05);
     --mood-low:#9482C9; --mood-mid:#6C9BC4; --mood-high:#DE9459;
     --font-ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -19,7 +19,7 @@
   :root:not([data-theme="light"]){ @media (prefers-color-scheme:dark){
     --ground:#000000; --surface:#1C1C1E; --surface-2:#2C2C2E;
     --ink:#F2F2F7; --muted:#8E8E93; --hairline:#38383A;
-    --exp:#E7A17A; --ref:#84B4DE; --mod:#B3A0E0; --try:#8AC998; --btn:#0A84FF; --btn-ink:#FFFFFF; --focus:#0A84FF; --ok:#32D74B; --danger:#FF453A;
+    --exp:#E7A17A; --ref:#84B4DE; --mod:#B3A0E0; --try:#8AC998; --btn:#3D93FF; --btn-ink:#0B1A2E; --focus:#0A84FF; --ok:#32D74B; --danger:#FF453A;
     --glass-bg:rgba(255,255,255,.06); --glass-bg-strong:rgba(255,255,255,.12); --glass-border:rgba(255,255,255,.12);
     --mood-low:#B3A0E0; --mood-mid:#84B4DE; --mood-high:#E7A17A;
     --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 22px rgba(0,0,0,.4);
@@ -27,7 +27,7 @@
   :root[data-theme="dark"]{
     --ground:#000000; --surface:#1C1C1E; --surface-2:#2C2C2E;
     --ink:#F2F2F7; --muted:#8E8E93; --hairline:#38383A;
-    --exp:#E7A17A; --ref:#84B4DE; --mod:#B3A0E0; --try:#8AC998; --btn:#0A84FF; --btn-ink:#FFFFFF; --focus:#0A84FF; --ok:#32D74B; --danger:#FF453A;
+    --exp:#E7A17A; --ref:#84B4DE; --mod:#B3A0E0; --try:#8AC998; --btn:#3D93FF; --btn-ink:#0B1A2E; --focus:#0A84FF; --ok:#32D74B; --danger:#FF453A;
     --glass-bg:rgba(255,255,255,.06); --glass-bg-strong:rgba(255,255,255,.12); --glass-border:rgba(255,255,255,.12);
     --mood-low:#B3A0E0; --mood-mid:#84B4DE; --mood-high:#E7A17A;
     --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 22px rgba(0,0,0,.4);
@@ -42,7 +42,7 @@
   .authbar .status .who{color:var(--ink);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px;}
   .pip-ok{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none;}
   .pip-off{width:8px;height:8px;border-radius:50%;background:var(--muted);opacity:.5;flex:none;}
-  .gbtn{font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border-radius:999px;padding:8px 14px;border:0;background:var(--btn);color:var(--btn-ink);white-space:nowrap;}
+  .gbtn{font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border-radius:999px;padding:11px 16px;min-height:44px;border:0;background:var(--btn);color:var(--btn-ink);white-space:nowrap;}
   .gbtn.ghost{background:var(--surface-2);color:var(--ink);}
   .gbtn:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
 
@@ -89,7 +89,7 @@
   .moodslider input[type="range"]:focus-visible{outline:2px solid var(--focus);outline-offset:4px;}
   .moodslider-ends{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.05em;}
   .moodwords{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:12px;}
-  .mword{font-family:inherit;font-size:12.5px;font-weight:600;color:var(--muted);background:var(--surface);border:0;border-radius:999px;padding:6px 12px;cursor:pointer;transition:background .15s ease,color .15s ease;}
+  .mword{font-family:inherit;font-size:12.5px;font-weight:600;color:var(--muted);background:var(--surface);border:0;border-radius:999px;padding:12px 14px;min-height:44px;cursor:pointer;transition:background .15s ease,color .15s ease;}
   .mword[aria-pressed="true"]{background:var(--glass-bg-strong);color:var(--ink);}
   .mword:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
 
@@ -102,7 +102,7 @@
   .ghostbtn{flex:none;}
 
   .wfield{margin-bottom:18px;}
-  .wfield .flabel{font-family:var(--font-ui);font-weight:700;font-size:14px;margin-bottom:5px;}
+  .wfield .flabel{display:block;font-family:var(--font-ui);font-weight:700;font-size:14px;margin-bottom:5px;}
   .wfield .prompt{color:var(--muted);font-size:12.5px;margin:0 0 6px;}
   .wfield textarea{min-height:60px;font-size:15px;}
 
@@ -193,8 +193,8 @@
   </header>
 
   <div class="tabs" role="tablist" aria-label="View">
-    <button class="tab" id="tab-daily" role="tab" aria-selected="true">Daily</button>
-    <button class="tab" id="tab-weekly" role="tab" aria-selected="false">Weekly</button>
+    <button class="tab" id="tab-daily" role="tab" aria-selected="true" aria-controls="panel-daily">Daily</button>
+    <button class="tab" id="tab-weekly" role="tab" aria-selected="false" aria-controls="panel-weekly">Weekly</button>
   </div>
 
   <div class="hero">
@@ -209,7 +209,7 @@
   </div>
 
   <!-- ================= DAILY (single view, multiple entries per day) ================= -->
-  <section id="panel-daily">
+  <section id="panel-daily" role="tabpanel" aria-labelledby="tab-daily">
     <div class="card step-card">
       <div class="card-head">
         <h2>Add a loop</h2>
@@ -220,25 +220,25 @@
         <div class="moodslider-label" id="moodLabel">Tap to check in</div>
         <input type="range" id="moodRange" min="0" max="6" step="any" value="3" aria-label="Mood check-in">
         <div class="moodslider-ends"><span>Low</span><span>Great</span></div>
-        <div class="moodwords hidden" id="moodWords"></div>
+        <div class="moodwords hidden" id="moodWords" role="group" aria-label="Describe your mood in a word"></div>
       </div>
 
-      <div class="wfield fe"><div class="flabel">Experience</div><p class="prompt">One thing you did or encountered.</p><textarea id="f-exp" placeholder="Today I..."></textarea></div>
-      <div class="wfield fr"><div class="flabel">Reflect</div><p class="prompt">What thoughts came up? What feeling are you carrying? How does it sit in your body?</p><textarea id="f-ref" placeholder="What I noticed was..."></textarea></div>
-      <div class="wfield fm"><div class="flabel">Model</div><p class="prompt">Your own takeaway. The rule or idea forming.</p><textarea id="f-mod" placeholder="So maybe..."></textarea></div>
+      <div class="wfield fe"><label class="flabel" for="f-exp">Experience</label><p class="prompt" id="f-exp-hint">One thing you did or encountered.</p><textarea id="f-exp" aria-describedby="f-exp-hint" placeholder="Today I..."></textarea></div>
+      <div class="wfield fr"><label class="flabel" for="f-ref">Reflect</label><p class="prompt" id="f-ref-hint">What thoughts came up? What feeling are you carrying? How does it sit in your body?</p><textarea id="f-ref" aria-describedby="f-ref-hint" placeholder="What I noticed was..."></textarea></div>
+      <div class="wfield fm"><label class="flabel" for="f-mod">Model</label><p class="prompt" id="f-mod-hint">Your own takeaway. The rule or idea forming.</p><textarea id="f-mod" aria-describedby="f-mod-hint" placeholder="So maybe..."></textarea></div>
 
       <div class="card tryCheck hidden" id="tryCheck">
         <p class="tc-label">Yesterday you wanted to try</p>
         <p class="tc-text" id="tryCheckText"></p>
-        <p class="tc-ask">Did it work?</p>
-        <div class="tc-chips" id="tryCheckChips">
+        <p class="tc-ask" id="tryCheckAsk">Did it work?</p>
+        <div class="tc-chips" id="tryCheckChips" role="group" aria-labelledby="tryCheckAsk">
           <button type="button" class="mword" data-v="worked">Worked</button>
           <button type="button" class="mword" data-v="partly">Partly</button>
           <button type="button" class="mword" data-v="no">Didn't</button>
         </div>
       </div>
 
-      <div class="wfield ft"><div class="flabel">Try</div><p class="prompt">One small thing you will test next.</p><textarea id="f-try" placeholder="Next I will..."></textarea></div>
+      <div class="wfield ft"><label class="flabel" for="f-try">Try</label><p class="prompt" id="f-try-hint">One small thing you will test next.</p><textarea id="f-try" aria-describedby="f-try-hint" placeholder="Next I will..."></textarea></div>
 
       <div class="nav"><button class="act primary" id="saveBtn">Save entry</button></div>
     </div>
@@ -266,18 +266,18 @@
   </section>
 
   <!-- ================= WEEKLY ================= -->
-  <section id="panel-weekly" class="hidden">
+  <section id="panel-weekly" class="hidden" role="tabpanel" aria-labelledby="tab-weekly">
     <div class="card step-card">
       <p class="date-line" id="weekLabel">This week</p>
       <div class="weekbar" id="weekbar"></div>
       <p class="recap-note" id="recapNote">No daily loops logged this week yet.</p>
 
-      <div class="wfield fe"><div class="flabel">1 &middot; The week's experience</div><p class="prompt">The moment from this week that stands out.</p><textarea id="w-exp" placeholder="This week..."></textarea></div>
-      <div class="wfield fr"><div class="flabel">2 &middot; Reflect across the loops</div><p class="prompt">Looking across your daily loops, what pattern do you notice?</p><textarea id="w-ref" placeholder="Across the week I keep seeing..."></textarea></div>
-      <div class="wfield fm"><div class="flabel">3 &middot; The bigger model</div><p class="prompt">What larger idea or rule is forming this week?</p><textarea id="w-mod" placeholder="My bigger takeaway is..."></textarea></div>
-      <div class="wfield ft"><div class="flabel">4 &middot; Carry into next week</div><p class="prompt">One thing you will carry or test next week.</p><textarea id="w-try" placeholder="Next week I will..."></textarea></div>
+      <div class="wfield fe"><label class="flabel" for="w-exp">1 &middot; The week's experience</label><p class="prompt" id="w-exp-hint">The moment from this week that stands out.</p><textarea id="w-exp" aria-describedby="w-exp-hint" placeholder="This week..."></textarea></div>
+      <div class="wfield fr"><label class="flabel" for="w-ref">2 &middot; Reflect across the loops</label><p class="prompt" id="w-ref-hint">Looking across your daily loops, what pattern do you notice?</p><textarea id="w-ref" aria-describedby="w-ref-hint" placeholder="Across the week I keep seeing..."></textarea></div>
+      <div class="wfield fm"><label class="flabel" for="w-mod">3 &middot; The bigger model</label><p class="prompt" id="w-mod-hint">What larger idea or rule is forming this week?</p><textarea id="w-mod" aria-describedby="w-mod-hint" placeholder="My bigger takeaway is..."></textarea></div>
+      <div class="wfield ft"><label class="flabel" for="w-try">4 &middot; Carry into next week</label><p class="prompt" id="w-try-hint">One thing you will carry or test next week.</p><textarea id="w-try" aria-describedby="w-try-hint" placeholder="Next week I will..."></textarea></div>
 
-      <div class="wfield"><div class="flabel">Bring to the circle</div><p class="prompt">Which day's loop do you want to take to your circle?</p><select id="w-pick"><option value="">Pick a day...</option></select></div>
+      <div class="wfield"><label class="flabel" for="w-pick">Bring to the circle</label><p class="prompt" id="w-pick-hint">Which day's loop do you want to take to your circle?</p><select id="w-pick" aria-describedby="w-pick-hint"><option value="">Pick a day...</option></select></div>
 
       <div class="nav"><button class="act primary" id="w-save">Save weekly review</button><button class="act ghostbtn" id="w-copy">Copy for the circle</button></div>
     </div>
@@ -304,7 +304,7 @@
   </div>
 </div>
 
-<div class="toast" id="toast">Saved</div>
+<div class="toast" id="toast" role="status" aria-live="polite">Saved</div>
 
 <script>
 (function(){
@@ -445,7 +445,9 @@
   function renderMoodLabel(){
     var el=$("moodRange");
     var v=moodIdx();
-    $("moodLabel").textContent=moodTouched?MOODS[v]:"Tap to check in";
+    var label=moodTouched?MOODS[v]:"Tap to check in";
+    $("moodLabel").textContent=label;
+    el.setAttribute("aria-valuetext",label);
     var z=zoneFor(v);
     var pct=(v/6)*100;
     el.style.background="linear-gradient(to right, var("+z.tok+") 0%, var("+z.tok+") "+pct+"%, var(--surface-2) "+pct+"%, var(--surface-2) 100%)";
