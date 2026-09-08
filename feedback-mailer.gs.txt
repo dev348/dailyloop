@@ -26,9 +26,16 @@
 var SHARED_SECRET = "0ca50bb4e70907f91bb60d2a49ba535ac64ea13d";
 
 // Keeps a single day's feedback emails well under Gmail's 500/day sending
-// limit, even if the secret above ever leaks. Activity pings don't send email,
-// so they aren't counted against this.
+// limit, even if the secret above ever leaks.
 var DAILY_CAP = 40;
+
+// Activity pings send no email, so they get their own, larger cap. They still
+// need one: the secret sits in a public file, so without a limit anyone who
+// reads the repo could write unlimited rows into the activity sheet and make
+// it useless to the bricoleurs who rely on it. Generous enough that real use
+// never reaches it, since each person pings once per saved entry and once per
+// sign-in.
+var CHECKIN_DAILY_CAP = 600;
 
 function doPost(e) {
   var data = {};
@@ -69,21 +76,38 @@ function handleFeedback(data) {
 function handleCheckin(data) {
   var email = String(data.email || "").trim().slice(0, 200);
   if (!email) return jsonOut({ ok: false, error: "no email" });
-
-  var sheet = getActivitySheet();
-  var rows = sheet.getDataRange().getValues();
-  var now = new Date();
-
-  for (var i = 1; i < rows.length; i++) {
-    if (rows[i][0] === email) {
-      sheet.getRange(i + 1, 2).setValue(now);              // last active
-      sheet.getRange(i + 1, 3).setValue((Number(rows[i][2]) || 0) + 1); // entries seen
-      return jsonOut({ ok: true });
-    }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return jsonOut({ ok: false, error: "bad email" });
+  if (!withinCap("checkin_", CHECKIN_DAILY_CAP)) {
+    return jsonOut({ ok: false, error: "rate limited" });
   }
 
-  sheet.appendRow([email, now, 1, now]); // email, last active, entries seen, first seen
-  return jsonOut({ ok: true });
+  // Two people saving at the same moment would otherwise read the same row
+  // count and one write would be lost.
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+  } catch (err) {
+    return jsonOut({ ok: false, error: "busy" });
+  }
+
+  try {
+    var sheet = getActivitySheet();
+    var rows = sheet.getDataRange().getValues();
+    var now = new Date();
+
+    for (var i = 1; i < rows.length; i++) {
+      if (rows[i][0] === email) {
+        sheet.getRange(i + 1, 2).setValue(now);                          // last active
+        sheet.getRange(i + 1, 3).setValue((Number(rows[i][2]) || 0) + 1); // pings seen
+        return jsonOut({ ok: true });
+      }
+    }
+
+    sheet.appendRow([email, now, 1, now]); // email, last active, pings seen, first seen
+    return jsonOut({ ok: true });
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function getActivitySheet() {
@@ -106,14 +130,20 @@ function getActivitySheet() {
   return sheet;
 }
 
-function withinDailyCap() {
+// Day boundary is Asia/Kolkata, so "today" means the same thing here as it
+// does to the people using the app.
+function withinCap(prefix, cap) {
   var props = PropertiesService.getScriptProperties();
-  var today = Utilities.formatDate(new Date(), "Etc/UTC", "yyyy-MM-dd");
-  var key = "count_" + today;
+  var today = Utilities.formatDate(new Date(), "Asia/Kolkata", "yyyy-MM-dd");
+  var key = prefix + today;
   var count = Number(props.getProperty(key) || "0");
-  if (count >= DAILY_CAP) return false;
+  if (count >= cap) return false;
   props.setProperty(key, String(count + 1));
   return true;
+}
+
+function withinDailyCap() {
+  return withinCap("count_", DAILY_CAP);
 }
 
 function jsonOut(obj) {
