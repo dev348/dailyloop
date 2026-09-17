@@ -62,6 +62,9 @@
   .streak-num{font-family:var(--font-ui);font-weight:700;font-size:34px;fill:var(--ink);}
   .streak-label{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;fill:var(--muted);}
   .arc{transition:opacity .35s ease, stroke-width .25s ease;}
+  /* Marks the moment an entry lands: builds, hits cleanly, recedes. No repeat, no loop. */
+  @keyframes loop-settle{0%{transform:scale(1);}40%{transform:scale(1.035);}100%{transform:scale(1);}}
+  .wheel.settle{animation:loop-settle .5s cubic-bezier(.34,1.2,.4,1);}
 
   .card{background:var(--surface);border:0;border-radius:22px;box-shadow:var(--shadow);}
   .step-card{padding:24px 20px 20px;}
@@ -173,6 +176,7 @@
   .foot b{color:var(--ink);font-weight:600;}
   .linklike{background:none;border:0;color:var(--focus);font-weight:600;text-decoration:underline;font-size:12px;cursor:pointer;font-family:inherit;padding:0;}
   .version{display:inline-block;margin-top:8px;font-size:11px;color:var(--muted);letter-spacing:.04em;font-variant-numeric:tabular-nums;}
+  .footer-logo{display:inline-block;width:14px;height:14px;margin-left:6px;vertical-align:middle;border-radius:3px;opacity:.7;}
   .nudge{display:flex;align-items:flex-start;gap:10px;padding:14px 16px;margin-bottom:16px;font-size:13px;line-height:1.5;}
   .nudge p{margin:0;flex:1;color:var(--ink);}
   .nudge-x{background:transparent;border:0;color:var(--muted);font-size:16px;cursor:pointer;padding:0 2px;line-height:1;flex:none;}
@@ -186,7 +190,7 @@
      heading already names the field for sighted people. */
   .visually-hidden{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;}
 
-  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:var(--btn);color:var(--btn-ink);padding:10px 18px;border-radius:999px;font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;transition:all .25s ease;box-shadow:var(--shadow);z-index:10;}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:var(--btn);color:var(--btn-ink);padding:10px 18px;border-radius:999px;font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .3s ease, transform .3s cubic-bezier(.34,1.2,.4,1);box-shadow:var(--shadow);z-index:10;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   @media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important;}}
 </style>
@@ -335,6 +339,7 @@
     &nbsp;&middot;&nbsp;
     <a href="privacy.html" style="color:var(--ink);font-weight:600;">Terms &amp; Privacy</a><br>
     <span class="version" id="appVersion"></span>
+    <img src="logo.png" alt="" class="footer-logo">
   </p>
   <div class="card feedback-card">
     <div class="sub">Feedback</div>
@@ -393,7 +398,7 @@
   function today(){return iso(new Date());}
   function mondayOf(d){var x=new Date(d);var day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);x.setHours(0,0,0,0);return x;}
   function weekId(d){return iso(mondayOf(d));}
-  function entryHasContent(e){if(!e)return false;if(e.emoji)return true;return STG.some(function(s){return e[s[0]]&&e[s[0]].trim();});}
+  function entryHasContent(e){if(!e)return false;if(e.emoji||e.moodWord||e.checkIn)return true;return STG.some(function(s){return e[s[0]]&&e[s[0]].trim();});}
   function dayEntries(k){return store.days[k]||[];}
   function dayHasLoop(k){return dayEntries(k).some(entryHasContent);}
   function filledMap(k){var arr=dayEntries(k);var m={};STG.forEach(function(s){m[s[0]]=arr.some(function(e){return e[s[0]]&&e[s[0]].trim();});});return m;}
@@ -533,6 +538,9 @@
   function setArc(id,on){var a=$(id);if(a){a.setAttribute("opacity",on?"1":"0.22");}}
   function arcsByContent(getVal){setArc("arc-e",!!getVal("exp"));setArc("arc-r",!!getVal("ref"));setArc("arc-m",!!getVal("mod"));setArc("arc-t",!!getVal("try"));}
   function refreshWheelDaily(){var u=filledMap(today());var v=currentVals();setArc("arc-e",u.exp||!!v.exp);setArc("arc-r",u.ref||!!v.ref);setArc("arc-m",u.mod||!!v.mod);setArc("arc-t",u["try"]||!!v["try"]);}
+  // A one-time cue for the moment an entry lands, separate from the arc fade
+  // that already tracks typing. Removes its own class so it can replay next save.
+  function settleWheel(){var w=document.querySelector(".wheel");if(!w)return;w.classList.remove("settle");void w.offsetWidth;w.classList.add("settle");}
 
   /* ---------- tabs ---------- */
   var mode="daily";
@@ -577,7 +585,10 @@
   $("moodRange").addEventListener("change",function(){this.value=moodIdx();renderMoodLabel();});
 
   /* ---------- daily entry form ---------- */
-  function currentVals(){var v={emoji:pickedEmoji,moodWord:pickedWord,exp:$("f-exp").value.trim(),ref:$("f-ref").value.trim(),mod:$("f-mod").value.trim(),"try":$("f-try").value.trim()};if(pickedTryCheck)v.checkIn={ref:pickedTryCheck.ref,result:pickedTryCheck.result};return v;}
+  // emoji is only recorded when the slider was actually touched, so an entry
+  // that never got a check-in doesn't get saved as "Neutral" by default. The
+  // slider still shows Neutral on screen either way.
+  function currentVals(){var v={moodWord:pickedWord,exp:$("f-exp").value.trim(),ref:$("f-ref").value.trim(),mod:$("f-mod").value.trim(),"try":$("f-try").value.trim()};if(moodTouched)v.emoji=pickedEmoji;if(pickedTryCheck)v.checkIn={ref:pickedTryCheck.ref,result:pickedTryCheck.result};return v;}
   function clearDraft(){pickedEmoji=MOODS[3];pickedWord="";lastZoneTok="";moodTouched=false;pickedTryCheck=null;$("moodRange").value="3";renderMoodLabel();["f-exp","f-ref","f-mod","f-try"].forEach(function(id){$(id).value="";});}
 
   // The draft always carries a mood, so entryHasContent() can't tell an empty
@@ -602,6 +613,7 @@
     renderTodayList();
     renderProgress();
     refreshWheelDaily();
+    settleWheel();
     maybeShowNudge();
     toast(ok?"Added. The loop turns.":"Saved (storage off)");
     pushIfSignedIn();
@@ -772,8 +784,8 @@
     if(last.length){
       var fa=first.reduce(function(a,p){return a+p.v;},0)/first.length;
       var la=last.reduce(function(a,p){return a+p.v;},0)/last.length;
-      if(la-fa>=0.6)drift=", trending up";
-      else if(fa-la>=0.6)drift=", trending down";
+      if(la-fa>=0.6)drift=", higher lately";
+      else if(fa-la>=0.6)drift=", lower lately";
     }
     $("moodChartDesc").textContent=pts.length+" day"+(pts.length===1?"":"s")+" checked in · mostly "+MOODS[Math.round(avg)].toLowerCase()+drift+".";
   }
@@ -789,7 +801,7 @@
     var keys=STG.map(function(s){return s[0];}).sort(function(a,b){return counts[b]-counts[a];});
     var top=keys[0],bottom=keys[keys.length-1];
     if(counts[top]>0&&counts[top]-counts[bottom]>=Math.max(3,flat.length*0.3)){
-      lines.push("You fill "+STG_NAME[top]+" most often and leave "+STG_NAME[bottom]+" blank the most.");
+      lines.push("You fill "+STG_NAME[top]+" most. "+STG_NAME[bottom]+" gets skipped most. That's the pattern so far, not a rule.");
     }
 
     // When they write.
