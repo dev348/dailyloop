@@ -73,6 +73,17 @@ function handleFeedback(data) {
   return jsonOut({ ok: true });
 }
 
+// The endpoint is public by design (see the note above SHARED_SECRET), so
+// anyone can POST an "email" straight into a sheet row. A value starting with
+// = + - or @ is read by Sheets as a formula, not text - a leading apostrophe
+// forces it back to literal text on write, matching what typing it in by hand
+// with that prefix would do. Doesn't change what's stored or compared later;
+// Sheets strips the apostrophe back off on read.
+function sheetSafe(v) {
+  v = String(v);
+  return /^[=+\-@]/.test(v) ? "'" + v : v;
+}
+
 function handleCheckin(data) {
   var email = String(data.email || "").trim().slice(0, 200);
   if (!email) return jsonOut({ ok: false, error: "no email" });
@@ -103,7 +114,7 @@ function handleCheckin(data) {
       }
     }
 
-    sheet.appendRow([email, now, 1, now]); // email, last active, pings seen, first seen
+    sheet.appendRow([sheetSafe(email), now, 1, now]); // email, last active, pings seen, first seen
     return jsonOut({ ok: true });
   } finally {
     lock.releaseLock();

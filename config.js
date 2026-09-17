@@ -1,8 +1,9 @@
 // Daily Loop - configuration
 // Google OAuth "Web application" client ID for project "The Daily Loop".
 // The client ID is safe to keep in this file. It is not a secret.
-// Authorized JavaScript origin currently set in Google Cloud: http://localhost:8000
-// (add your deploy URL as another origin in the console before hosting it online).
+// Authorized JavaScript origins currently set in Google Cloud: http://localhost:8000,
+// https://dev348.github.io, and https://daily.nami.org.in. Add any new deploy URL
+// as another origin in the console before hosting from it.
 //
 // Feedback form (optional, free, unlimited): a tiny Google Apps Script tied
 // to your own Google account emails you when someone taps "Send feedback" -
